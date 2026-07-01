@@ -3,9 +3,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A pipeline that turns the public [Qlik Talend documentation](https://help.qlik.com/talend/)
-into a token-efficient knowledge base for Claude. One source crawl, three
-distribution targets — local Claude Code, claude.ai Skill, claude.ai Project
-Knowledge — sharing the same distilled content but packaged for the
+— **plus the Qlik Talend Cloud Data Integration docs in [Qlik Cloud Help](https://help.qlik.com/en-US/cloud-services/)**
+(Open Lakehouse, declarative/AI-assisted pipelines, and the rest of the "agentic
+data engineering" release) — into a token-efficient knowledge base for Claude. Two
+Qlik doc sources, three distribution targets — local Claude Code, claude.ai Skill,
+claude.ai Project Knowledge — sharing the same distilled content but packaged for the
 mechanics of each surface.
 
 Why this exists: out-of-the-box, Claude either answers Talend questions from
@@ -17,9 +19,11 @@ context**, not 14 MB.
 ## What it does, end to end
 
 1. **Crawls** all relevant Talend sub-sitemaps (Studio 8.x, TMC, Remote Engine
-   Linux/Windows, Dynamic Engine, installation, SDLC/CI-CD, Cloud platform)
-   with `httpx + BeautifulSoup + markdownify`. Honours `robots.txt`,
-   throttles, retries, hash-caches.
+   Linux/Windows, Dynamic Engine, installation, SDLC/CI-CD, Cloud platform, ESB,
+   APIs, Data apps) **and the Qlik Cloud Help Data-Integration subtree** (Open
+   Lakehouse, pipelines, connections, GenAI, API Designer, DI platform) with
+   `httpx + BeautifulSoup + markdownify`. Honours `robots.txt` (incl. the Cloud
+   Help `Crawl-delay: 5`), throttles, retries, hash-caches.
 2. **Clusters and distils**: 3,261 raw pages → 497 topic clusters. Each
    topic gets a markdown file with TL;DR, procedure outline, notes /
    restrictions, and a citations table that maps every anchor exactly to
@@ -248,7 +252,7 @@ repo ships only **code and skill scaffolding** (e.g. `SKILL.md`,
 Each line below is one **canonical Qlik Talend doc entry page**; all
 sub-pages of that guide are crawled via Qlik's official sitemap (so
 coverage is essentially complete — no recursive link-walking needed).
-The current build covers **4,903 pages → 767 topics** across these guides:
+The current build covers **5,520 pages → 833 topics** across these guides:
 
 **studio** (Talend Studio 8.0 — latest R-code at crawl):
 - https://help.qlik.com/talend/en-US/studio-user-guide/8.0-R2026-04/
@@ -329,6 +333,43 @@ The current build covers **4,903 pages → 767 topics** across these guides:
 - https://help.qlik.com/talend/en-US/data-service-route-example/8.0/
 - https://help.qlik.com/talend/en-US/esb-read-hl7-message/8.0/
 - https://help.qlik.com/talend/en-US/web-service-proxy/8.0/
+
+**cloud-lakehouse** (Qlik Talend Cloud — Open Lakehouse (Apache Iceberg, streaming, compute)):
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/Lakehouse/s3-bucket.htm
+
+**cloud-pipelines** (Qlik Talend Cloud — transformations, declarative/AI-assisted pipelines, data products & marts, replication):
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/Transformation/Add-columns.htm
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/DeclarativePipelines/Declarative-pipelines-overview.htm
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/DataProducts/Data-products.htm
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/DataMarts/DataMarts.htm
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/KnowledgeMart/Test-Assistant.htm
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/Replicating/ddl_history.htm
+
+**cloud-connections** (Qlik Talend Cloud — source/target & SaaS-application connections, landing, file storage):
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/SourcesConnections/SSH-tunnel.htm
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/TargetConnections/aws-target.htm
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/WebApplications/Connecting-Dixa.htm
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/Landing/Lake-landing.htm
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/FileStorage/connecting-ftp.htm
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/Storage/dataset-tables.htm
+
+**cloud-genai** (Qlik Talend Cloud — GenAI: LLM connections & vector databases):
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/LLMConnections/connecting-openAI.htm
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/VectorDBs/connecting-pinecone.htm
+
+**cloud-api-designer** (Qlik Talend Cloud — API Designer (Data Integration)):
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/APIDesigner/IntroductionToApiDesigner.htm
+
+**cloud-di-platform** (Qlik Talend Cloud — Data Integration platform: intro, spaces, deploy, stewardship, catalog):
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/Introduction/Getting-started-QTC.htm
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/Onboarding/Onboarding-data.htm
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/Deploying/Troubleshooting-data-assets.htm
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/DataSpaces/working-spaces.htm
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/DataStewardship/Creating-sprint.htm
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/Catalog/Understanding-data-catalog.htm
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/VersionControl/Project-version-control.htm
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/Marketplace/Updating-the-marketplace.htm
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/Analytics/Developing-app-with-datasets.htm
 The same list — with comments on the doubled `/talend/talend/...` robots
 quirk and "how to add another guide" — also lives in the docstring of
 [`crawler/config.py`](crawler/config.py).
@@ -358,8 +399,12 @@ To cover additional Talend products or other Qlik docs (Sense, QlikView):
 
 1. Look up sub-sitemap names in `https://help.qlik.com/talend/sitemap.xml`
    (or `https://help.qlik.com/sitemap.xml`).
-2. Add them to `PRODUCT_SITEMAPS` in `crawler/config.py`.
-3. `make fresh`.
+2. For **Talend docs**, add the sitemap name(s) to `PRODUCT_SITEMAPS` in
+   `crawler/config.py`. For **Qlik Cloud Help** (`/cloud-services/`), add the
+   `/DataIntegration/<Section>/` segment(s) to `CLOUD_PRODUCT_SECTIONS` instead —
+   the crawler already knows the cloud-services sitemap and URL scheme.
+3. Add the group to `GROUP_LABELS` / `GROUP_VERSIONS` and a blurb to
+   `GROUP_DESCRIPTIONS`, then `make fresh`.
 
 ## Roadmap / next milestones
 
@@ -411,10 +456,10 @@ The code in this repository is licensed under [MIT](LICENSE).
 ### Note on crawled content
 
 The MIT license covers **the source code only**. The crawler downloads
-documentation from `help.qlik.com/talend`, which is owned by Qlik and
-governed by Qlik's own terms of use. The crawled and distilled content is
-**not** part of this repo and must be regenerated locally by each user via
-`make fresh`. Users are responsible for complying with Qlik's terms of use
-when running the crawler.
+documentation from `help.qlik.com/talend` and `help.qlik.com/en-US/cloud-services`,
+which is owned by Qlik and governed by Qlik's own terms of use. The crawled and
+distilled content is **not** part of this repo and must be regenerated locally by
+each user via `make fresh`. Users are responsible for complying with Qlik's terms
+of use when running the crawler.
 
 This project is **not** affiliated with or endorsed by Qlik.

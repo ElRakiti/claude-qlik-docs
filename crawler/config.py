@@ -89,7 +89,38 @@ esb:
 - https://help.qlik.com/talend/en-US/esb-read-hl7-message/8.0/
 - https://help.qlik.com/talend/en-US/web-service-proxy/8.0/
 
-To extend coverage with another guide:
+--- SECOND DOC SOURCE: Qlik Cloud Help (help.qlik.com/en-US/cloud-services) ---
+The Qlik Talend Cloud "agentic data engineering" docs do NOT live under
+help.qlik.com/talend. They are published in the Qlik Cloud Help system, which
+uses a different URL scheme (`/en-US/cloud-services/.../Content/Sense_Hub/
+DataIntegration/<Section>/<page>.htm`) and a single flat url-set sitemap
+(`https://help.qlik.com/sitemap_cloud-services_en-US.xml`) instead of a
+per-guide sitemap-index. We crawl the Data Integration subtree and route pages
+to groups by their `/DataIntegration/<Section>/` path segment (see
+CLOUD_PRODUCT_SECTIONS). Same MadCap `div#topicContent` container as Talend, so
+the extractor is shared. Section landing pages:
+
+cloud-lakehouse:
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/Lakehouse/lakehouse-pipeline-architecture.htm
+
+cloud-pipelines:
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/Transformation/Transformations.htm
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/DeclarativePipelines/Declarative-pipelines-overview.htm
+
+cloud-connections:
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/SourcesConnections/supported-sources.htm
+
+cloud-genai:
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/LLMConnections/
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/VectorDBs/
+
+cloud-api-designer:
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/APIDesigner/
+
+cloud-di-platform:
+- https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/Introduction/Data-services-introduction.htm
+
+To extend coverage with another TALEND guide:
 1. Look up the sub-sitemap name in https://help.qlik.com/talend/sitemap.xml
    (filter for `_<latest-version>_en-US.xml`).
 2. Add `<sitemap-name>_<version>` to the appropriate group below (or create
@@ -105,6 +136,13 @@ To extend coverage with another guide:
    - README.md "### Out of scope (current)" list.
    (The SKILL.md coverage table and the README guide list ARE auto-generated.)
 5. Run `make fresh` (or just `make crawl && make build`).
+
+To extend coverage with a CLOUD (help.qlik.com/cloud-services) section: add
+the exact `/DataIntegration/<Section>/` segment to a group in
+CLOUD_PRODUCT_SECTIONS (verify it exists first:
+`curl -s https://help.qlik.com/sitemap_cloud-services_en-US.xml | grep -oE
+'DataIntegration/[^/]+/' | sort -u`), then do steps 3-5 above. Cloud groups
+use "Cloud" as their version and need no sitemap-name entry.
 """
 from __future__ import annotations
 
@@ -125,6 +163,13 @@ GROUP_LABELS: dict[str, str] = {
     "data-apps": "Talend Data Stewardship + Data Preparation, Cloud",
     "api": "Talend Cloud APIs + API Designer / Portal / Services / Tester",
     "esb": "Talend ESB 8.0 — Camel routes, CXF services, Karaf container, microservices, Activity Monitoring Console",
+    # Cloud Help (help.qlik.com/cloud-services) — Qlik Talend Cloud Data Integration:
+    "cloud-lakehouse": "Qlik Talend Cloud — Open Lakehouse (Apache Iceberg, streaming, compute)",
+    "cloud-pipelines": "Qlik Talend Cloud — transformations, declarative/AI-assisted pipelines, data products & marts, replication",
+    "cloud-connections": "Qlik Talend Cloud — source/target & SaaS-application connections, landing, file storage",
+    "cloud-genai": "Qlik Talend Cloud — GenAI: LLM connections & vector databases",
+    "cloud-api-designer": "Qlik Talend Cloud — API Designer (Data Integration)",
+    "cloud-di-platform": "Qlik Talend Cloud — Data Integration platform: intro, spaces, deploy, stewardship, catalog",
 }
 
 # Version string shown in the SKILL.md coverage table.
@@ -138,6 +183,12 @@ GROUP_VERSIONS: dict[str, str] = {
     "data-apps": "Cloud + 8.0",
     "api": "Cloud",
     "esb": "8.0",
+    "cloud-lakehouse": "Cloud",
+    "cloud-pipelines": "Cloud",
+    "cloud-connections": "Cloud",
+    "cloud-genai": "Cloud",
+    "cloud-api-designer": "Cloud",
+    "cloud-di-platform": "Cloud",
 }
 
 USER_AGENT = "qlik-docs-skill-builder/0.1 (+https://github.com/mkcimt/claude-qlik-docs)"
@@ -149,6 +200,11 @@ SITEMAP_URL_TEMPLATE = "https://help.qlik.com/talend/sitemap_{name}_{locale}.xml
 REQUEST_DELAY_SECONDS = 1.0
 REQUEST_TIMEOUT_SECONDS = 30.0
 MAX_RETRIES = 5
+
+# Qlik Cloud Help robots.txt requests `Crawl-delay: 5`. This is enforced as a
+# per-request floor for cloud-services pages regardless of the --delay flag, so
+# a no-filter `tasks.py crawl` can't accidentally hammer them at 0.5s (see run.py).
+CLOUD_CRAWL_DELAY_SECONDS = 5.0
 
 # Logical groups → static sitemap names (no R-codes here; Studio is dynamic).
 # Any name containing the placeholder "<latest-r>" gets resolved against the
@@ -235,3 +291,50 @@ PRODUCT_SITEMAPS: dict[str, list[str]] = {
         "web-service-proxy_8.0",
     ],
 }
+
+# ---------------------------------------------------------------------------
+# Second doc source: Qlik Cloud Help (help.qlik.com/en-US/cloud-services).
+# One flat url-set sitemap (not a per-guide index). We select the Data
+# Integration subtree and route each page to a group by its
+# `/DataIntegration/<Section>/` path segment. The section segments are
+# case-sensitive and must match the URL exactly (verify against the sitemap).
+# ---------------------------------------------------------------------------
+CLOUD_SERVICES_SITEMAP = "https://help.qlik.com/sitemap_cloud-services_en-US.xml"
+
+# Logical group -> Data Integration section segments it collects.
+CLOUD_PRODUCT_SECTIONS: dict[str, list[str]] = {
+    "cloud-lakehouse": ["Lakehouse"],
+    "cloud-pipelines": [
+        "Transformation",
+        "DeclarativePipelines",
+        "DataProducts",
+        "DataMarts",
+        "KnowledgeMart",
+        "Replicating",
+    ],
+    "cloud-connections": [
+        "SourcesConnections",
+        "TargetConnections",
+        "WebApplications",
+        "Landing",
+        "FileStorage",
+        "Storage",
+    ],
+    "cloud-genai": ["LLMConnections", "VectorDBs"],
+    "cloud-api-designer": ["APIDesigner"],
+    "cloud-di-platform": [
+        "Introduction",
+        "Onboarding",
+        "Deploying",
+        "DataSpaces",
+        "DataStewardship",
+        "Catalog",
+        "VersionControl",
+        "Marketplace",
+        "Analytics",
+    ],
+}
+
+# All crawlable logical groups across both doc sources (Talend + Cloud Help).
+# Used for the `--product` choices and the `doctor` drift check.
+ALL_GROUPS: list[str] = sorted(set(PRODUCT_SITEMAPS) | set(CLOUD_PRODUCT_SECTIONS))

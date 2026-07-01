@@ -30,6 +30,13 @@ GROUP_DESCRIPTIONS: dict[str, str] = {
     "sdlc-cicd": "Software Development Life Cycle, CI/CD, Git, environments, promotions, operational mgmt.",
     "studio": "Talend Studio (8.0) — job design, components, projects, Git, metadata, deployment.",
     "tmc": "Talend Management Console (Cloud) — promotions, schedules, users, tokens, environments, audit.",
+    # Qlik Cloud Help (help.qlik.com/cloud-services) — Qlik Talend Cloud Data Integration:
+    "cloud-lakehouse": "Qlik Talend Cloud Open Lakehouse — Apache Iceberg lakehouse in your AWS account: ingestion, streaming, compute clusters, optimization, monitoring.",
+    "cloud-pipelines": "Qlik Talend Cloud pipelines — transformation flows (incl. AI-assisted / SQL-from-prompt), declarative pipelines, data products & data marts, knowledge mart, replication.",
+    "cloud-connections": "Qlik Talend Cloud connections — source & target connectors plus 100+ SaaS web-application connectors, landing, file storage. Large; load only for a specific connector's settings.",
+    "cloud-genai": "Qlik Talend Cloud GenAI building blocks — LLM connections and vector-database connections used by AI-assisted pipelines.",
+    "cloud-api-designer": "Qlik Talend Cloud API Designer (Data Integration) — design, document and mock REST APIs.",
+    "cloud-di-platform": "Qlik Talend Cloud Data Integration platform — getting started, spaces, deployment/requirements, data stewardship, catalog, version control, marketplace.",
 }
 
 

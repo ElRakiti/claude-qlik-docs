@@ -261,11 +261,12 @@ def cmd_doctor(_args) -> int:
         built_groups = set()
         problems += 1
 
-    # 2. Every configured group present in the local build?
+    # 2. Every configured group present in the local build? (both doc sources:
+    #    Talend sitemaps + Qlik Cloud Help Data-Integration sections)
     try:
-        from crawler.config import PRODUCT_SITEMAPS
+        from crawler.config import ALL_GROUPS
 
-        for group in PRODUCT_SITEMAPS:
+        for group in ALL_GROUPS:
             if group not in built_groups:
                 print(f"  WARN  group '{group}' is configured but NOT in the local build")
                 print(
@@ -274,7 +275,7 @@ def cmd_doctor(_args) -> int:
                 )
                 problems += 1
     except Exception as exc:  # noqa: BLE001
-        print(f"  WARN  could not read crawler.config.PRODUCT_SITEMAPS: {exc}")
+        print(f"  WARN  could not read crawler.config.ALL_GROUPS: {exc}")
         problems += 1
 
     # 3. Skill index built?

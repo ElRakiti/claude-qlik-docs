@@ -19,12 +19,13 @@ Run: uv run python -m distill.cluster
 from __future__ import annotations
 
 import json
-import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
+
+from crawler.extract import _parse_url
 
 ROOT = Path(__file__).resolve().parent.parent
 MANIFEST = ROOT / "skill-output" / "qlik-talend" / "meta" / "manifest.json"
@@ -145,13 +146,10 @@ def load_pages() -> list[PageRef]:
     # The crawler iterates sitemaps sequentially, so this preserves TOC order per guide.
     refs: list[PageRef] = []
     for idx, (url, meta) in enumerate(manifest["pages"].items()):
-        # parse version + slug from URL
-        m = re.match(
-            r"^https?://help\.qlik\.com/talend/[a-z]{2}-[A-Z]{2}/"
-            r"(?P<product>[^/]+)/(?P<version>[^/]+)/(?P<slug>[^/?#]+)/?$",
-            url,
-        )
-        if not m:
+        # parse version + slug from URL via the shared parser (Talend + Cloud Help)
+        try:
+            parts = _parse_url(url)
+        except ValueError:
             continue
         if not meta.get("out_path", ""):
             continue  # skip pages that failed to crawl (no raw file)
@@ -159,10 +157,10 @@ def load_pages() -> list[PageRef]:
             PageRef(
                 url=url,
                 title=meta.get("title", ""),
-                slug=m.group("slug"),
+                slug=parts["page_slug"],
                 product_group=meta.get("product_group", "?"),
-                product_slug=m.group("product"),
-                version=m.group("version"),
+                product_slug=parts["product_slug"],
+                version=parts["version"],
                 out_path=meta.get("out_path", ""),
                 sitemap_index=idx,
             )

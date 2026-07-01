@@ -42,6 +42,43 @@ class TestParseURL:
             _parse_url("https://example.com/not-a-talend-url")
 
 
+CLOUD_BASE = (
+    "https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub"
+    "/DataIntegration"
+)
+
+
+class TestParseCloudURL:
+    def test_flat_cloud_page(self):
+        p = _parse_url(f"{CLOUD_BASE}/Lakehouse/lakehouse-pipeline-architecture.htm")
+        assert p["source"] == "cloud-services"
+        assert p["locale"] == "en-US"
+        assert p["product_slug"] == "lakehouse"  # section, lower-cased
+        assert p["version"] == "Cloud"
+        assert p["major_version"] == "Cloud"
+        assert p["r_code"] == ""
+        assert p["page_slug"] == "lakehouse-pipeline-architecture"
+
+    def test_deep_cloud_page_keeps_subfolders_in_slug(self):
+        # section/<subfolder>/<page>.htm — subfolders folded into the slug so
+        # two connectors with the same page name don't collide on disk.
+        p = _parse_url(f"{CLOUD_BASE}/SourcesConnections/MySQL/MySQL-source.htm")
+        assert p["product_slug"] == "sourcesconnections"
+        assert p["page_slug"] == "MySQL__MySQL-source"
+
+    def test_cloud_page_with_query_string(self):
+        p = _parse_url(f"{CLOUD_BASE}/DeclarativePipelines/Declarative-pipelines-overview.htm?id=7")
+        assert p["product_slug"] == "declarativepipelines"
+        assert p["page_slug"] == "Declarative-pipelines-overview"
+
+    def test_talend_regex_does_not_match_cloud(self):
+        assert URL_RE.match(f"{CLOUD_BASE}/Lakehouse/x.htm") is None
+
+    def test_canonicalize_cloud_strips_query(self):
+        u = f"{CLOUD_BASE}/Lakehouse/x.htm"
+        assert canonicalize(u + "?id=9") == u
+
+
 class TestCanonicalize:
     def test_strips_query(self):
         assert (

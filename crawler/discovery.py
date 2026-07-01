@@ -12,6 +12,8 @@ from dataclasses import dataclass
 import httpx
 
 from crawler.config import (
+    CLOUD_PRODUCT_SECTIONS,
+    CLOUD_SERVICES_SITEMAP,
     LOCALE,
     PRODUCT_SITEMAPS,
     SITEMAP_URL_TEMPLATE,
@@ -21,6 +23,7 @@ from crawler.config import (
 
 NS = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
 R_CODE_RE = re.compile(r"^studio-user-guide_(8\.0-R\d{4}-\d{2})(?:-and-earlier)?$")
+CLOUD_SECTION_RE = re.compile(r"/DataIntegration/([^/]+)/")
 
 
 @dataclass(frozen=True)
@@ -28,6 +31,7 @@ class SitemapRef:
     product: str  # logical product name (key of PRODUCT_SITEMAPS)
     name: str  # resolved sitemap name (no R-code placeholders)
     url: str
+    source: str = "talend"  # doc source: "talend" | "cloud-services"
 
 
 def _client() -> httpx.Client:
@@ -96,6 +100,74 @@ def fetch_urls(ref: SitemapRef) -> list[str]:
     ]
 
 
+def fetch_cloud_page_urls() -> list[str]:
+    """Fetch the flat Qlik Cloud Help url-set sitemap and return all page URLs
+    (in sitemap order). Unlike the Talend sitemap-index, this is a single
+    sitemap of every cloud-services page."""
+    with _client() as c:
+        r = c.get(CLOUD_SERVICES_SITEMAP)
+        r.raise_for_status()
+    root = ET.fromstring(r.content)
+    return [
+        (loc.text or "").strip()
+        for loc in root.findall("sm:url/sm:loc", NS)
+        if (loc.text or "").strip()
+    ]
+
+
+def resolve_cloud_sections(
+    products: list[str] | None = None,
+) -> list[tuple[SitemapRef, list[str]]]:
+    """Resolve configured Cloud Help groups to per-section (ref, page URLs).
+
+    Mirrors the (ref, fetch_urls(ref)) shape used for Talend sitemaps so the
+    crawler can treat both sources uniformly. Pages are routed to a group by
+    their `/DataIntegration/<Section>/` path segment (CLOUD_PRODUCT_SECTIONS).
+    Returns one SitemapRef per (group, section) actually present, preserving
+    sitemap order within each section.
+    """
+    section_to_group: dict[str, str] = {}
+    for group, sections in CLOUD_PRODUCT_SECTIONS.items():
+        if products is not None and group not in products:
+            continue
+        for sec in sections:
+            if sec in section_to_group and section_to_group[sec] != group:
+                raise ValueError(
+                    f"Cloud section {sec!r} is mapped to two groups "
+                    f"({section_to_group[sec]!r} and {group!r}) in "
+                    "CLOUD_PRODUCT_SECTIONS — each section must belong to one group"
+                )
+            section_to_group[sec] = group
+    if not section_to_group:
+        return []
+
+    buckets: dict[str, list[str]] = {}
+    for url in fetch_cloud_page_urls():
+        # Only bucket pages the extractor can actually parse (a `.htm` leaf, per
+        # CLOUD_URL_RE), so discovery and crawler.extract stay in agreement — a
+        # directory-style URL would otherwise be crawled then FAIL to parse.
+        if not url.split("?", 1)[0].split("#", 1)[0].endswith(".htm"):
+            continue
+        m = CLOUD_SECTION_RE.search(url)
+        if not m:
+            continue
+        section = m.group(1)
+        if section not in section_to_group:
+            continue
+        buckets.setdefault(section, []).append(url)
+
+    out: list[tuple[SitemapRef, list[str]]] = []
+    for section, urls in buckets.items():
+        ref = SitemapRef(
+            product=section_to_group[section],
+            name=f"cloud-services-{section}",
+            url=CLOUD_SERVICES_SITEMAP,
+            source="cloud-services",
+        )
+        out.append((ref, urls))
+    return out
+
+
 if __name__ == "__main__":
     refs = resolve_sitemap_refs()
     total = 0
@@ -103,4 +175,7 @@ if __name__ == "__main__":
         urls = fetch_urls(ref)
         total += len(urls)
         print(f"{len(urls):5d}  {ref.product:18s}  {ref.name}")
-    print(f"------\n{total:5d}  TOTAL across {len(refs)} sitemaps")
+    for ref, urls in resolve_cloud_sections():
+        total += len(urls)
+        print(f"{len(urls):5d}  {ref.product:18s}  {ref.name}")
+    print(f"------\n{total:5d}  TOTAL")

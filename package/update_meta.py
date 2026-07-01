@@ -41,6 +41,37 @@ def _sitemap_to_url(name: str, r_code: str) -> str:
     return f"https://help.qlik.com/talend/en-US/{slug}/{version}/"
 
 
+def _cloud_entry_urls(manifest_pages: dict, sections: list[str]) -> list[str]:
+    """One representative Qlik Cloud Help entry URL per Data-Integration section.
+
+    Cloud groups have no per-guide sitemap name to convert, so we pick a landing
+    page straight from the crawl manifest — preferring an overview/introduction
+    page, else the shortest crawled URL in the section."""
+    out: list[str] = []
+    for section in sections:
+        needle = f"/DataIntegration/{section}/"
+        candidates = [
+            u
+            for u, m in manifest_pages.items()
+            if needle in u and isinstance(m, dict) and m.get("out_path")
+        ]
+        if not candidates:
+            continue
+        # Match only the leaf filename — matching the whole URL would let a
+        # section folder named e.g. "Introduction" mark every page as preferred.
+        preferred = [
+            u
+            for u in candidates
+            if re.search(
+                r"(introduction|overview|getting-started|-intro)",
+                u.rsplit("/", 1)[-1],
+                re.IGNORECASE,
+            )
+        ]
+        out.append(sorted(preferred or candidates, key=len)[0])
+    return out
+
+
 def _group_stats(tm: dict) -> dict[str, dict[str, int]]:
     stats: dict[str, dict[str, int]] = {}
     for g in tm["guides"]:
@@ -54,7 +85,7 @@ def _group_stats(tm: dict) -> dict[str, dict[str, int]]:
 
 
 def update_readme(readme: str, manifest_pages: dict, tm: dict) -> str:
-    from crawler.config import PRODUCT_SITEMAPS, GROUP_LABELS
+    from crawler.config import CLOUD_PRODUCT_SECTIONS, GROUP_LABELS, PRODUCT_SITEMAPS
 
     r_code = _resolve_r_code(manifest_pages)
     stats = _group_stats(tm)
@@ -73,6 +104,18 @@ def update_readme(readme: str, manifest_pages: dict, tm: dict) -> str:
         lines.append(f"**{group}** ({label}):")
         for name in sitemaps:
             lines.append(f"- {_sitemap_to_url(name, r_code)}")
+        lines.append("")
+
+    # Cloud Help groups (help.qlik.com/cloud-services) — one entry page per
+    # Data-Integration section, taken from the crawl manifest. Only groups that
+    # were actually built (present in topic_map stats) are listed.
+    for group, sections in CLOUD_PRODUCT_SECTIONS.items():
+        if group not in stats:
+            continue
+        label = GROUP_LABELS.get(group, group)
+        lines.append(f"**{group}** ({label}):")
+        for url in _cloud_entry_urls(manifest_pages, sections):
+            lines.append(f"- {url}")
         lines.append("")
 
     new_body = "\n".join(lines)

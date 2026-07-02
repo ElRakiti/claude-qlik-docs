@@ -15,8 +15,13 @@ from dataclasses import asdict
 from pathlib import Path
 from time import monotonic
 
-from crawler.config import PRODUCT_SITEMAPS
-from crawler.discovery import SitemapRef, fetch_urls, resolve_sitemap_refs
+from crawler.config import ALL_GROUPS, CLOUD_CRAWL_DELAY_SECONDS, PRODUCT_SITEMAPS
+from crawler.discovery import (
+    SitemapRef,
+    fetch_urls,
+    resolve_cloud_sections,
+    resolve_sitemap_refs,
+)
 from crawler.extract import (
     _parse_url,
     canonicalize,
@@ -66,21 +71,32 @@ def crawl(
     force: bool,
     delay: float,
 ) -> int:
-    refs = [
-        r
-        for r in resolve_sitemap_refs()
-        if products is None or r.product in products
-    ]
-    if not refs:
+    # Only resolve the Talend sitemap-index when a Talend group is in scope.
+    # A cloud-only crawl must not depend on (or pay two GETs for) the Talend
+    # index — and resolve_latest_studio_r_code() would otherwise raise if the
+    # Talend side ever lacked a studio sitemap.
+    want_talend = products is None or any(p in PRODUCT_SITEMAPS for p in products)
+    talend_refs = (
+        [r for r in resolve_sitemap_refs() if products is None or r.product in products]
+        if want_talend
+        else []
+    )
+    cloud_sections = resolve_cloud_sections(products)
+    if not talend_refs and not cloud_sections:
         print(f"[run] no sitemaps match {products!r}", file=sys.stderr)
         return 1
+
+    # Uniform (ref, urls) work sources across both doc sources: Talend
+    # sub-sitemaps and Qlik Cloud Help Data-Integration sections.
+    ref_url_lists: list[tuple[SitemapRef, list[str]]] = [
+        (ref, fetch_urls(ref)) for ref in talend_refs
+    ] + cloud_sections
 
     # Collect all URLs grouped by ref, deduped by canonical URL across the run.
     work: list[tuple[SitemapRef, str]] = []
     seen: set[str] = set()
     n_dupes = 0
-    for ref in refs:
-        urls = fetch_urls(ref)
+    for ref, urls in ref_url_lists:
         if limit:
             urls = urls[:limit]
         for u in urls:
@@ -91,7 +107,7 @@ def crawl(
             seen.add(canon)
             work.append((ref, canon))
     print(
-        f"[run] {len(work)} unique URLs across {len(refs)} sitemaps "
+        f"[run] {len(work)} unique URLs across {len(ref_url_lists)} sitemaps/sections "
         f"({n_dupes} ?id= duplicates dropped)"
     )
 
@@ -103,11 +119,19 @@ def crawl(
     with Fetcher(delay_seconds=delay) as fetcher:
         for i, (ref, url) in enumerate(work, 1):
             prev = pages.get(url, {}) if not force else {}
+            # Cloud Help pages get a stricter per-request delay floor (robots
+            # Crawl-delay: 5) even when the run's --delay is lower.
+            min_delay = (
+                CLOUD_CRAWL_DELAY_SECONDS
+                if ref.source == "cloud-services"
+                else None
+            )
             try:
                 res = fetcher.get(
                     url,
                     prev_etag=prev.get("etag"),
                     prev_last_modified=prev.get("last_modified"),
+                    min_delay=min_delay,
                 )
                 if res.from_cache:
                     n_cached += 1
@@ -185,7 +209,7 @@ def main() -> int:
     p.add_argument(
         "--product",
         action="append",
-        choices=sorted(PRODUCT_SITEMAPS.keys()),
+        choices=ALL_GROUPS,
         help="logical product group (repeatable). Default: all",
     )
     p.add_argument("--limit", type=int, help="cap URLs per sitemap (smoke testing)")

@@ -67,3 +67,39 @@ class TestFrontmatter:
             "crawled_at:",
         ):
             assert field in rendered, f"missing field: {field}"
+
+
+# Qlik Cloud Help pages use the SAME MadCap `div#topicContent` container as
+# Talend, so the shared extractor must work on them with cloud frontmatter.
+CLOUD_HTML = """<!doctype html><html><head><title>ignored</title></head><body>
+<nav class="breadcrumb">Home &gt; Data Integration &gt; Lakehouse</nav>
+<div id="topicContent">
+  <h1>Qlik Open Lakehouse architecture</h1>
+  <p>Qlik Open Lakehouse ingests data into an Apache Iceberg lakehouse.</p>
+  <h2>Components</h2>
+  <p>The data movement gateway captures changes from source systems.</p>
+  <script>var junk = 1;</script>
+</div>
+<footer>copyright stuff</footer>
+</body></html>"""
+CLOUD_URL = (
+    "https://help.qlik.com/en-US/cloud-services/Subsystems/Hub/Content/Sense_Hub"
+    "/DataIntegration/Lakehouse/lakehouse-pipeline-architecture.htm"
+)
+
+
+class TestExtractCloud:
+    def test_cloud_page_extracts_title_and_body(self):
+        p = extract(CLOUD_HTML, CLOUD_URL)
+        assert p.title == "Qlik Open Lakehouse architecture"
+        assert p.content_markdown.lstrip().startswith("# ")
+        assert "junk" not in p.content_markdown.lower()
+        assert "copyright stuff" not in p.content_markdown
+
+    def test_cloud_frontmatter_marks_source_and_version(self):
+        p = extract(CLOUD_HTML, CLOUD_URL)
+        rendered = render_with_frontmatter(p, product_group="cloud-lakehouse")
+        assert "source: cloud-services" in rendered
+        assert "product_group: cloud-lakehouse" in rendered
+        assert "product_slug: lakehouse" in rendered
+        assert "version: Cloud" in rendered

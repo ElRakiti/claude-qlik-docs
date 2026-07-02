@@ -1,6 +1,6 @@
 ---
 name: qlik-talend
-description: Authoritative reference for Qlik Talend (Studio 8.0, Talend Management Console, Remote Engine, SDLC/CI-CD, installation/migration, ESB, Talend APIs, Data Stewardship, Data Preparation). Use when answering questions about Talend Studio jobs/components, TMC promotions/schedules/users, Remote Engine setup/configuration, Dynamic Engine, hybrid installations, Studio→TMC publishing, Git/CI-CD with Talend, ESB routes/services/container/microservices/Activity Monitoring Console (AMC)/JMX monitoring, Talend Data Stewardship campaigns/tasks/data-models and its REST API, Talend Data Preparation recipes/datasets/preparations, API Designer/Tester, or anything mentioning Talend on Qlik Cloud. Sourced from help.qlik.com/talend.
+description: Authoritative reference for Qlik Talend (Studio 8.0, Talend Management Console, Remote Engine, SDLC/CI-CD, installation/migration, ESB, Talend APIs, Data Stewardship, Data Preparation) and Qlik Talend Cloud Data Integration. Use when answering questions about Talend Studio jobs/components, TMC promotions/schedules/users, Remote Engine setup/configuration, Dynamic Engine, hybrid installations, Studio→TMC publishing, Git/CI-CD with Talend, ESB routes/services/container/microservices/Activity Monitoring Console (AMC)/JMX monitoring, Talend Data Stewardship campaigns/tasks/data-models and its REST API, Talend Data Preparation recipes/datasets/preparations, API Designer/Tester, or anything mentioning Talend on Qlik Cloud. Also covers the Qlik "agentic data engineering" release: Qlik Open Lakehouse (Apache Iceberg, streaming, compute), declarative pipelines, AI-assisted / SQL-from-prompt transformations, data products and data marts, knowledge marts, source/target and SaaS-application connections, LLM and vector-database connections, and replication tasks. Sourced from help.qlik.com/talend and the Qlik Cloud Help (help.qlik.com/en-US/cloud-services).
 ---
 
 # Qlik Talend Documentation Skill
@@ -19,6 +19,15 @@ Trigger on questions that mention Talend products or workflows, including but no
 - **Talend Data Stewardship**: campaigns, tasks, data models, workflows (arbitration / resolution / merging / grouping), label & validation rules, assignment, the stewardship console, the TDQL query language, **data quality rules** (basic & advanced mode, the **Data Shaping Expression Language**), and the **Data Stewardship REST API**.
 - **Talend Data Preparation**: preparations, recipes, datasets, functions, data cleansing/masking, exporting prepared data, and using Data Prep within pipelines.
 
+**Qlik Talend Cloud — Data Integration** (Qlik Cloud Help; the "agentic data engineering" release):
+
+- **Qlik Open Lakehouse**: Apache Iceberg lakehouse in your own AWS account, batch + streaming ingestion, compute clusters, optimization, monitoring, cost/compute value meters.
+- **Pipelines & transformations**: declarative pipelines, transformation flows, AI-assisted transformations and SQL-from-text-prompt, processors, data products & data marts, knowledge marts, replication tasks.
+- **Connections**: source & target connectors, 100+ SaaS web-application connectors, landing, file storage.
+- **GenAI building blocks**: LLM connections (OpenAI, Azure OpenAI, Amazon Bedrock, …) and vector-database connections (Pinecone, Elasticsearch, OpenSearch, …).
+- **API Designer** (Data Integration): design, document and mock REST APIs.
+- **DI platform**: getting started, spaces, deployment / system requirements, data stewardship, catalog, version control, marketplace.
+
 If a question is *vaguely* Talend-related but really about a non-Talend product (Qlik Sense, QlikView, Replicate, Compose, NPrinting), do **not** rely on this skill — it does not contain those docs.
 
 ## Coverage scope
@@ -26,6 +35,12 @@ If a question is *vaguely* Talend-related but really about a non-Talend product 
 | Group | Versions | Pages | Topics |
 |-------|---------|------:|-------:|
 | api | Cloud | ~314 | ~56 |
+| cloud-api-designer | Cloud | ~59 | ~1 |
+| cloud-connections | Cloud | ~246 | ~26 |
+| cloud-di-platform | Cloud | ~37 | ~13 |
+| cloud-genai | Cloud | ~6 | ~3 |
+| cloud-lakehouse | Cloud | ~192 | ~11 |
+| cloud-pipelines | Cloud | ~77 | ~12 |
 | cloud-platform | Cloud | ~127 | ~20 |
 | data-apps | Cloud + 8.0 | ~579 | ~75 |
 | esb | 8.0 | ~1,063 | ~195 |
@@ -50,7 +65,7 @@ Always work outside-in. Do NOT load the entire skill folder; pick the smallest p
    - Version constraints
    - A `## Citations` table mapping each `[^P-N]` anchor → exact raw file path + canonical URL.
 4. **Only if you need full procedure text, exact parameter values, or verbatim quotes**, open the raw file from the topic's Citations table:  
-   `raw/<group>/<guide>/<version>/<page>.md`. Each raw file has a YAML frontmatter with `source_url`, `major_version`, `r_code`, `version_constraints`, `breadcrumbs`.
+   `raw/<group>/<guide>/<version>/<page>.md`. Each raw file has a YAML frontmatter with `source_url`, `source` (`talend` or `cloud-services`), `major_version`, `r_code`, `version_constraints`, `breadcrumbs`. Cloud Data Integration pages use `version: Cloud` and cite `help.qlik.com/en-US/cloud-services/...` URLs.
 
 ## Citation discipline
 

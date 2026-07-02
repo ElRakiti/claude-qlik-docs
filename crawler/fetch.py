@@ -66,11 +66,15 @@ class Fetcher:
         url: str,
         prev_etag: Optional[str] = None,
         prev_last_modified: Optional[str] = None,
+        min_delay: Optional[float] = None,
     ) -> FetchResult:
-        # Throttle
+        # Throttle — honour the larger of the configured delay and any
+        # per-request minimum (e.g. a stricter robots.txt Crawl-delay for a
+        # given doc source).
+        delay = self._delay if min_delay is None else max(self._delay, min_delay)
         elapsed = time.monotonic() - self._last_request_at
-        if elapsed < self._delay:
-            time.sleep(self._delay - elapsed)
+        if elapsed < delay:
+            time.sleep(delay - elapsed)
         headers: dict[str, str] = {}
         if prev_etag:
             headers["If-None-Match"] = prev_etag

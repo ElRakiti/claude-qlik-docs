@@ -22,6 +22,18 @@ URL_RE = re.compile(
     r"(?:\?[^#]*)?(?:#.*)?$"
 )
 
+# Second doc source — Qlik Cloud Help (help.qlik.com/en-US/cloud-services).
+# MadCap pages under a deep, unversioned path, e.g.
+#   .../cloud-services/Subsystems/Hub/Content/Sense_Hub/DataIntegration/Lakehouse/foo.htm
+#   .../cloud-services/.../DataIntegration/SourcesConnections/MySQL/mysql-source.htm
+# We anchor on the /DataIntegration/<Section>/ segment; the remaining path
+# (which may itself contain sub-folders) becomes the page slug.
+CLOUD_URL_RE = re.compile(
+    r"^https?://help\.qlik\.com/(?P<locale>[a-z]{2}-[A-Z]{2})/cloud-services/"
+    r".*?/DataIntegration/(?P<section>[^/]+)/(?P<rest>.+?)\.htm"
+    r"(?:\?[^#]*)?(?:#.*)?$"
+)
+
 
 def canonicalize(url: str) -> str:
     """Drop query string + fragment. The Talend sitemaps list the same page
@@ -79,19 +91,43 @@ class ExtractedPage:
 
 
 def _parse_url(url: str) -> dict[str, str]:
+    """Parse a doc URL into path/version parts, dispatching by doc source.
+
+    Talend docs (help.qlik.com/talend/<locale>/<slug>/<version>/<page>) and
+    Qlik Cloud Help (help.qlik.com/<locale>/cloud-services/.../DataIntegration/
+    <Section>/<page>.htm) have different URL schemes but yield the same field
+    shape (product_slug / version / page_slug / major_version / r_code / locale
+    / source) so the rest of the pipeline is source-agnostic.
+    """
     m = URL_RE.match(url)
-    if not m:
-        raise ValueError(f"URL does not match expected pattern: {url}")
-    parts = m.groupdict()
-    v = parts["version"]
-    if v.lower() == "cloud":
-        parts["major_version"] = "Cloud"
-        parts["r_code"] = ""
-    else:
-        rm = re.match(r"^(\d+\.\d+)(?:-(R\d{4}-\d{2}.*))?$", v)
-        parts["major_version"] = rm.group(1) if rm else v
-        parts["r_code"] = (rm.group(2) or "") if rm else ""
-    return parts
+    if m:
+        parts = m.groupdict()
+        v = parts["version"]
+        if v.lower() == "cloud":
+            parts["major_version"] = "Cloud"
+            parts["r_code"] = ""
+        else:
+            rm = re.match(r"^(\d+\.\d+)(?:-(R\d{4}-\d{2}.*))?$", v)
+            parts["major_version"] = rm.group(1) if rm else v
+            parts["r_code"] = (rm.group(2) or "") if rm else ""
+        parts["source"] = "talend"
+        return parts
+
+    cm = CLOUD_URL_RE.match(url)
+    if cm:
+        # product_slug = the Data Integration section (the "guide"); page_slug
+        # keeps any sub-folders (joined with "__") to stay unique on disk.
+        return {
+            "locale": cm.group("locale"),
+            "product_slug": cm.group("section").lower(),
+            "version": "Cloud",
+            "page_slug": cm.group("rest").replace("/", "__"),
+            "major_version": "Cloud",
+            "r_code": "",
+            "source": "cloud-services",
+        }
+
+    raise ValueError(f"URL does not match expected pattern: {url}")
 
 
 def _strip_junk(soup: BeautifulSoup) -> None:
@@ -165,6 +201,7 @@ def render_with_frontmatter(page: ExtractedPage, product_group: str) -> str:
     fm = {
         "source_url": page.url,
         "title": page.title,
+        "source": parts.get("source", "talend"),  # doc source: talend | cloud-services
         "product_group": product_group,  # logical group: studio / tmc / remote-engine / ...
         "product_slug": parts["product_slug"],  # raw URL product slug
         "version": parts["version"],

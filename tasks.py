@@ -11,11 +11,12 @@ Usage:
 Targets:
     crawl, cluster, topics, index, update-meta, validate, build, test,
     cc-install, cc-uninstall, chat-bundle, project-bundle,
-    fresh, clean, help
+    fresh, clean, doctor, help
 """
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import platform
 import shutil
@@ -234,6 +235,92 @@ def cmd_fresh(_args) -> int:
     return 0
 
 
+def cmd_doctor(_args) -> int:
+    """Check for drift between the pulled code/config and the local build +
+    install.
+
+    The classic failure after a `git pull` (or the kit's update.py pulling
+    this repo): config.py gained a group or guides, but the local crawl /
+    build / cc-install were never regenerated — so a new Claude session
+    silently serves stale or partial content, or the installed skill still
+    points at a different checkout. Run this after every pull/update and
+    before relying on or rebuilding the skill.
+    """
+    problems = 0
+
+    # 1. Local build present?
+    manifest_p = SKILL_SRC / "meta" / "manifest.json"
+    if manifest_p.exists():
+        pages = json.loads(manifest_p.read_text(encoding="utf-8")).get("pages", {})
+        built_groups = {
+            v.get("product_group") for v in pages.values() if isinstance(v, dict)
+        }
+    else:
+        print("  WARN  no local crawl yet (meta/manifest.json missing)")
+        print("        fix: uv run python tasks.py crawl && uv run python tasks.py build")
+        built_groups = set()
+        problems += 1
+
+    # 2. Every configured group present in the local build? (both doc sources:
+    #    Talend sitemaps + Qlik Cloud Help Data-Integration sections)
+    try:
+        from crawler.config import ALL_GROUPS
+
+        for group in ALL_GROUPS:
+            if group not in built_groups:
+                print(f"  WARN  group '{group}' is configured but NOT in the local build")
+                print(
+                    f"        fix: uv run python tasks.py crawl --product {group} "
+                    "&& uv run python tasks.py build"
+                )
+                problems += 1
+    except Exception as exc:  # noqa: BLE001
+        print(f"  WARN  could not read crawler.config.ALL_GROUPS: {exc}")
+        problems += 1
+
+    # 3. Skill index built?
+    if not (SKILL_SRC / "index.md").exists():
+        print("  WARN  skill not built (index.md missing)")
+        print("        fix: uv run python tasks.py build")
+        problems += 1
+
+    # 4. Installed Claude Code skill points at THIS checkout?
+    dst = skill_dst()
+    if not (dst.exists() or dst.is_symlink()):
+        print(f"  WARN  Claude Code skill not installed at {dst}")
+        print("        fix: uv run python tasks.py cc-install")
+        problems += 1
+    else:
+        try:
+            target = dst.resolve()
+            expected = SKILL_SRC.resolve()
+            if target != expected:
+                print("  WARN  installed skill points at a different checkout:")
+                print(f"          is:       {target}")
+                print(f"          expected: {expected}")
+                print("        fix: uv run python tasks.py cc-install")
+                problems += 1
+        except OSError as exc:
+            print(f"  WARN  could not resolve skill link {dst}: {exc}")
+            problems += 1
+
+    # 5. Studio must be a single R-code (build double-counts otherwise).
+    studio_ug = SKILL_SRC / "raw" / "studio" / "studio-user-guide"
+    if studio_ug.exists():
+        rcodes = sorted(p.name for p in studio_ug.iterdir() if p.is_dir())
+        if len(rcodes) > 1:
+            print(f"  WARN  studio-user-guide has multiple R-code dirs: {rcodes}")
+            print("        fix: delete the stale/partial R-code (raw + topics + manifest), then rebuild")
+            problems += 1
+
+    if problems == 0:
+        print("  OK  no drift: every configured group is built, studio is single-R-code,")
+        print(f"      and the skill is installed from this checkout ({SKILL_SRC}).")
+        return 0
+    print(f"\n  {problems} drift issue(s) found — resolve the fixes above before relying on the skill.")
+    return 1
+
+
 def cmd_help(_args) -> int:
     print(__doc__)
     print("Detected OS:", platform.system())
@@ -260,6 +347,7 @@ COMMANDS = {
     "project-bundle": cmd_project_bundle,
     "fresh": cmd_fresh,
     "clean": cmd_clean,
+    "doctor": cmd_doctor,
     "help": cmd_help,
 }
 

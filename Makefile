@@ -3,7 +3,7 @@
 # `uv run python tasks.py <target>`) — same targets, identical behaviour.
 
 .PHONY: help crawl cluster topics index validate build test clean fresh \
-        cc-install cc-uninstall chat-bundle project-bundle
+        cc-install cc-uninstall chat-bundle project-bundle doctor
 
 PY := uv run python tasks.py
 
@@ -28,6 +28,7 @@ help:
 	@echo "  make fresh          — wipe outputs, recrawl, rebuild, cc-install"
 	@echo "  make clean          — wipe build artefacts (keeps raw mirror)"
 	@echo "  make test           — run unit tests (no network, ~1s)"
+	@echo "  make doctor         — check for drift after a pull (config vs build vs install)"
 
 crawl:          ; @$(PY) crawl
 cluster:        ; @$(PY) cluster
@@ -42,3 +43,4 @@ chat-bundle:    ; @$(PY) chat-bundle
 project-bundle: ; @$(PY) project-bundle
 fresh:          ; @$(PY) fresh
 clean:          ; @$(PY) clean
+doctor:         ; @$(PY) doctor
